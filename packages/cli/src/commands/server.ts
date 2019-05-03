@@ -51,7 +51,12 @@ export default class ServerCmd extends FlyCommand {
       noWatch: env === "test"
     })
 
-    const server = new Server({ appStore, inspect: !!flags.inspect })
+    const certOptions = {
+      // key: fs.readFileSync("./key.pem"),
+      // cert: fs.readFileSync("./cert.pem")
+    }
+
+    const server = new Server({ appStore, inspect: !!flags.inspect, ...certOptions })
     console.log("Memory Cache Adapter: " + server.bridge.cacheStore.constructor.name)
     if (server.bridge.blobStore) {
       console.log(`Blob Cache Adapter: ${server.bridge.blobStore}`)

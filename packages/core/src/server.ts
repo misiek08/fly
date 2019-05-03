@@ -1,4 +1,6 @@
 import * as http from "http"
+import * as fs from "fs"
+import * as https from "https"
 import { ivm } from "./"
 import * as zlib from "zlib"
 import log from "./log"
@@ -52,6 +54,8 @@ export interface ServerOptions {
   bridge?: Bridge
   inspect?: boolean
   monitorFrequency?: number
+  key?: string | Buffer | Array<string | Buffer>
+  cert?: string | Buffer | Array<string | Buffer>
 }
 
 export interface RequestTask {
@@ -59,7 +63,7 @@ export interface RequestTask {
   response: http.ServerResponse
 }
 
-export class Server extends http.Server {
+export class Server extends https.Server {
   public options: ServerOptions
 
   public bridge: Bridge
@@ -67,7 +71,12 @@ export class Server extends http.Server {
   public appStore: FileAppStore
 
   constructor(options: ServerOptions = {}) {
-    super()
+    const { key, cert } = options
+    console.log("using keys", { key, cert })
+    super({ key, cert })
+    // cert: fs.readFileSync("/Users/md/src/superfly/web/edge/registry-proxy/registry.fly.local.pem"),
+    // key: fs.readFileSync("/Users/md/src/superfly/web/edge/registry-proxy/registry.fly.local-key.pem")
+    // })
     this.options = options
     this.appStore = options.appStore || new FileAppStore(process.cwd())
     this.bridge =
@@ -93,6 +102,7 @@ export class Server extends http.Server {
   }
 
   private async handleRequest(request: http.IncomingMessage, response: http.ServerResponse) {
+    console.log("handleRequest")
     // request.pause()
     const start = process.hrtime()
     const reqId = randomBytes(12).toString("hex")
@@ -290,7 +300,7 @@ function handleResponse(rt: Runtime, src: V8ResponseBody, res: http.ServerRespon
     res.on("error", err => {
       reject(err)
     })
-    setImmediate(() => dst.end(src)); // string or Buffer
+    setImmediate(() => dst.end(src)) // string or Buffer
   })
 }
 
