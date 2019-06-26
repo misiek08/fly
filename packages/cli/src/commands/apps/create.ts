@@ -29,7 +29,7 @@ export default class Create extends FlyCommand {
       query: LIST_ORGANIZATIONS
     })
 
-    const organizations = orgResp.data.organizations.nodes.map(option => (option["value"] = option.id) && option)
+    const organizations = orgResp.data.organizations.nodes.map((option: any) => (option.value = option.id) && option)
 
     const answers: any = await inquirer.prompt([
       {
