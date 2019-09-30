@@ -4,9 +4,46 @@ set -ex
 
 # trigger action in superfly/homebrew-brew
 
-curl \
-  -XPOST -u "$GITHUB_AUTH" \
-  -H "Accept: application/vnd.github.everest-preview+json" \
-  -H "Content-Type: application/json" \
-  https://api.github.com/repos/superfly/homebrew-tap/dispatches \
-  --data '{"event_type": "release"}'
+# curl \
+#   -XPOST -u "$GITHUB_AUTH" \
+#   -H "Accept: application/vnd.github.everest-preview+json" \
+#   -H "Content-Type: application/json" \
+#   https://api.github.com/repos/superfly/homebrew-tap/dispatches \
+#   --data '{"event_type": "release"}'
+
+#!/bin/bash
+
+set -ex
+
+mkdir -p ./tmp
+
+cd tmp
+
+git clone git@github.com:superfly/homebrew-tap.git homebrew-tap
+
+curl -s "https://get.fly.io/tarballs/stable/darwin-x64" > manifest.json
+URL=$(node -p "require('./manifest.json').gz")
+SHA=$(node -p "require('./manifest.json').sha256gz")
+VERSION=$(node -p "require('./manifest.json').version")
+CHANNEL=$(node -p "require('./manifest.json').channel")
+
+echo "Updating $VERSION on $CHANNEL"
+echo "  URL: $URL"
+echo "  SHA: $SHA"
+
+cd homebrew-tap
+
+sed -i "s~url \".*\"~url \"${URL}\"~" "Formula/fly.rb"
+sed -i "s~sha256 \".*\"~sha256 \"${SHA}\"~" "Formula/fly.rb"
+sed -i "s~version \".*\"~version \"${VERSION}\"~" "Formula/fly.rb"
+
+if [[ -n $(git status -s) ]]; then
+  git add Formula/fly.rb
+
+  sh -c "git config --global user.name 'Flybot' \
+        && git config --global user.email 'bot@fly.io' \
+        && git commit -m 'fly v$VERSION' \
+        && git push -u origin HEAD"
+else
+  echo 'latest version already released, done'
+fi

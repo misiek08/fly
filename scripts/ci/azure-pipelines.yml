@@ -10,124 +10,124 @@ variables:
     value: 1.15.2
 
 jobs:
-  - job: test
-    strategy:
-      maxParallel: 2
-      matrix:
-        mac:
-          vm: macOS-10.13
-        linux:
-          vm: ubuntu-16.04
-    pool:
-      vmImage: $(vm)
-    variables:
-      CI: true
-    timeoutInMinutes: 20
-    steps:
-      - bash: echo $(Agent.JobName)
-      - task: NodeTool@0
-        inputs:
-          versionSpec: $(node_version)
-      - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
-        inputs:
-          versionSpec: $(yarn_version)
-      - bash: yarn install --no-progress && yarn bootstrap
-        displayName: Setup Dependencies
-      - bash: yarn build && yarn bundle
-        displayName: Build
-      - bash: yarn test
-        displayName: Test
-      - task: PublishTestResults@2
-        condition: always()
-        inputs:
-          testResultsFiles: "**/*junit.xml"
-          searchFolder: $(Build.SourcesDirectory)/artifacts
+  # - job: test
+  #   strategy:
+  #     maxParallel: 2
+  #     matrix:
+  #       mac:
+  #         vm: macOS-10.13
+  #       linux:
+  #         vm: ubuntu-16.04
+  #   pool:
+  #     vmImage: $(vm)
+  #   variables:
+  #     CI: true
+  #   timeoutInMinutes: 20
+  #   steps:
+  #     - bash: echo $(Agent.JobName)
+  #     - task: NodeTool@0
+  #       inputs:
+  #         versionSpec: $(node_version)
+  #     - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
+  #       inputs:
+  #         versionSpec: $(yarn_version)
+  #     - bash: yarn install --no-progress && yarn bootstrap
+  #       displayName: Setup Dependencies
+  #     - bash: yarn build && yarn bundle
+  #       displayName: Build
+  #     - bash: yarn test
+  #       displayName: Test
+  #     - task: PublishTestResults@2
+  #       condition: always()
+  #       inputs:
+  #         testResultsFiles: "**/*junit.xml"
+  #         searchFolder: $(Build.SourcesDirectory)/artifacts
 
-  - job: publish_npm
-    condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
-    dependsOn: test
-    pool:
-      vmImage: ubuntu-16.04
-    steps:
-      - task: NodeTool@0
-        inputs:
-          versionSpec: $(node_version)
-      - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
-        inputs:
-          versionSpec: $(yarn_version)
-      - bash: yarn install --no-progress && yarn bootstrap
-        displayName: Setup Dependencies
-      - bash: yarn build && yarn bundle
-        displayName: Build
-      - bash: ./scripts/release/npm
-        displayName: Release updated packages to NPM
-        env:
-          NPM_TOKEN: $(NPM_TOKEN)
+  # - job: publish_npm
+  #   condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
+  #   dependsOn: test
+  #   pool:
+  #     vmImage: ubuntu-16.04
+  #   steps:
+  #     - task: NodeTool@0
+  #       inputs:
+  #         versionSpec: $(node_version)
+  #     - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
+  #       inputs:
+  #         versionSpec: $(yarn_version)
+  #     - bash: yarn install --no-progress && yarn bootstrap
+  #       displayName: Setup Dependencies
+  #     - bash: yarn build && yarn bundle
+  #       displayName: Build
+  #     - bash: ./scripts/release/npm
+  #       displayName: Release updated packages to NPM
+  #       env:
+  #         NPM_TOKEN: $(NPM_TOKEN)
 
-  - job: build_cli
-    dependsOn: publish_npm
-    condition: |
-      or(
-        eq(variables['build.sourceBranch'], 'refs/heads/master'),
-        startsWith(variables['build.sourceBranch'], 'refs/heads/cli')
-      )
-    strategy:
-      maxParallel: 2
-      matrix:
-        mac:
-          vm: xcode9-macos10.13
-          target: darwin-x64
-        linux:
-          vm: ubuntu-16.04
-          target: linux-x64
-    pool:
-      vmImage: $(vm)
-    steps:
-      - task: NodeTool@0
-        inputs:
-          versionSpec: $(node_version)
-      - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
-        inputs:
-          versionSpec: $(yarn_version)
-      - bash: yarn install --no-progress && yarn bootstrap
-        displayName: Setup Dependencies
-      - bash: yarn build && yarn bundle
-        displayName: Build
-      - bash: ./scripts/release/pack $(target)
-        displayName: Pack CLI Bundle
-      - task: PublishPipelineArtifact@0
-        inputs:
-          artifactName: cli-$(target)
-          targetPath: $(Build.SourcesDirectory)/packages/cli/dist
+  # - job: build_cli
+  #   dependsOn: publish_npm
+  #   condition: |
+  #     or(
+  #       eq(variables['build.sourceBranch'], 'refs/heads/master'),
+  #       startsWith(variables['build.sourceBranch'], 'refs/heads/cli')
+  #     )
+  #   strategy:
+  #     maxParallel: 2
+  #     matrix:
+  #       mac:
+  #         vm: xcode9-macos10.13
+  #         target: darwin-x64
+  #       linux:
+  #         vm: ubuntu-16.04
+  #         target: linux-x64
+  #   pool:
+  #     vmImage: $(vm)
+  #   steps:
+  #     - task: NodeTool@0
+  #       inputs:
+  #         versionSpec: $(node_version)
+  #     - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
+  #       inputs:
+  #         versionSpec: $(yarn_version)
+  #     - bash: yarn install --no-progress && yarn bootstrap
+  #       displayName: Setup Dependencies
+  #     - bash: yarn build && yarn bundle
+  #       displayName: Build
+  #     - bash: ./scripts/release/pack $(target)
+  #       displayName: Pack CLI Bundle
+  #     - task: PublishPipelineArtifact@0
+  #       inputs:
+  #         artifactName: cli-$(target)
+  #         targetPath: $(Build.SourcesDirectory)/packages/cli/dist
 
-  - job: publish_cli
-    dependsOn: build_cli
-    pool:
-      vmImage: ubuntu-16.04
-    steps:
-      - task: NodeTool@0
-        inputs:
-          versionSpec: $(node_version)
-      - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
-        inputs:
-          versionSpec: $(yarn_version)
-      - bash: yarn install --no-progress && yarn bootstrap
-        displayName: Setup Dependencies
-      - task: DownloadPipelineArtifact@1
-        displayName: Download builds
-        inputs:
-          downloadPath: $(Build.StagingDirectory)/dist
-      - bash: find $(Build.StagingDirectory)/dist -name 'cli-*' -exec rsync -rv '{}/' $(Build.SourcesDirectory)/packages/cli/dist/ \;
-        displayName: Move builds to dist
-      - bash: yarn oclif-dev publish
-        workingDirectory: $(Build.SourcesDirectory)/packages/cli
-        env:
-          AWS_ACCESS_KEY_ID: $(RELEASE_ACCESS_KEY_ID)
-          AWS_SECRET_ACCESS_KEY: $(RELEASE_SECRET_ACCESS_KEY)
-          AWS_S3_ENDPOINT: $(RELEASE_ENDPOINT)
+  # - job: publish_cli
+  #   dependsOn: build_cli
+  #   pool:
+  #     vmImage: ubuntu-16.04
+  #   steps:
+  #     - task: NodeTool@0
+  #       inputs:
+  #         versionSpec: $(node_version)
+  #     - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
+  #       inputs:
+  #         versionSpec: $(yarn_version)
+  #     - bash: yarn install --no-progress && yarn bootstrap
+  #       displayName: Setup Dependencies
+  #     - task: DownloadPipelineArtifact@1
+  #       displayName: Download builds
+  #       inputs:
+  #         downloadPath: $(Build.StagingDirectory)/dist
+  #     - bash: find $(Build.StagingDirectory)/dist -name 'cli-*' -exec rsync -rv '{}/' $(Build.SourcesDirectory)/packages/cli/dist/ \;
+  #       displayName: Move builds to dist
+  #     - bash: yarn oclif-dev publish
+  #       workingDirectory: $(Build.SourcesDirectory)/packages/cli
+  #       env:
+  #         AWS_ACCESS_KEY_ID: $(RELEASE_ACCESS_KEY_ID)
+  #         AWS_SECRET_ACCESS_KEY: $(RELEASE_SECRET_ACCESS_KEY)
+  #         AWS_S3_ENDPOINT: $(RELEASE_ENDPOINT)
 
   - job: publish_homebrew
-    dependsOn: publish_cli
+    # dependsOn: publish_cli
     pool:
       vmImage: ubuntu-16.04
     steps:
