@@ -1,0 +1,26 @@
+name: CI
+on: [push]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04]
+        node-version: [11]
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: install, build, and test
+        run: |
+          yarn install --no-progress
+          yarn bootstrap
+          yarn build
+          yarn bundle
+          yarn test
+        env:
+          CI: true
