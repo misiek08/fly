@@ -2,7 +2,7 @@ name: CI
 on: [push]
 
 jobs:
-  build:
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -20,43 +20,49 @@ jobs:
           yarn bootstrap
           yarn build
           yarn bundle
-      - uses: actions/upload-artifact@master
-        with:
-          name: build-${{ matrix.os }}
-          path: .
-
-  test:
-    needs: build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macOS-latest]
-    steps:
-      - uses: actions/download-artifact@master
-        with:
-          name: build-${{ matrix.os }}
-      - uses: actions/setup-node@v1
-        with:
-          node-version: 11.10.1
       - name: test
         run: yarn test
         env:
           CI: true
-  # publish_npm:
-  #   needs: test
-  #   runs-on: ubuntu-latest
+      # - uses: actions/upload-artifact@master
+      #   with:
+      #     name: build-${{ matrix.os }}
+      #     path: .
+  # test:
+  #   needs: build
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       os: [ubuntu-latest, macOS-latest]
   #   steps:
-  #     - uses: actions/checkout@v1
+  #     - uses: actions/download-artifact@master
   #       with:
-  #         submodules: true
+  #         name: build-${{ matrix.os }}
   #     - uses: actions/setup-node@v1
-  #     - name: install & build
-  #       run: |
-  #         yarn install --no-progress
-  #         yarn bootstrap
-  #         yarn build
-  #         yarn bundle
-  #     - name: Release updated packages to NPM
-  #       run: ./scripts/release/npm
+  #       with:
+  #         node-version: 11.10.1
+  #     - name: test
+  #       run: yarn test
   #       env:
-  #         NPM_TOKEN: $(NPM_TOKEN)
+  #         CI: true
+
+  publish_npm:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          submodules: true
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 11.10.1
+      - name: install & build
+        run: |
+          yarn install --no-progress
+          yarn bootstrap
+          yarn build
+          yarn bundle
+      - name: Release updated packages to NPM
+        run: ./scripts/release/npm
+        env:
+          NPM_TOKEN: $(NPM_TOKEN)
