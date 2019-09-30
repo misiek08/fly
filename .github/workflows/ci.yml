@@ -28,23 +28,6 @@ jobs:
       #   with:
       #     name: build-${{ matrix.os }}
       #     path: .
-  # test:
-  #   needs: build
-  #   runs-on: ${{ matrix.os }}
-  #   strategy:
-  #     matrix:
-  #       os: [ubuntu-latest, macOS-latest]
-  #   steps:
-  #     - uses: actions/download-artifact@master
-  #       with:
-  #         name: build-${{ matrix.os }}
-  #     - uses: actions/setup-node@v1
-  #       with:
-  #         node-version: 11.10.1
-  #     - name: test
-  #       run: yarn test
-  #       env:
-  #         CI: true
 
   publish_npm:
     needs: test
@@ -66,3 +49,69 @@ jobs:
         run: ./scripts/release/npm
         env:
           NPM_TOKEN: $(NPM_TOKEN)
+
+  build_cli:
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest]
+        include:
+          - os: macOS-latest
+            target: darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          submodules: true
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 11.10.1
+      - name: install & build
+        run: |
+          yarn install --no-progress
+          yarn bootstrap
+          yarn build
+          yarn bundle
+      - name: Pack CLI Bundle
+        run: ./scripts/release/pack ${{ matrix.target }}
+      - uses: actions/upload-artifact@master
+        with:
+          name: cli-${{ matrix.target }}
+          path: packages/cli/dist
+  # - job: build_cli
+  #   dependsOn: publish_npm
+  #   condition: |
+  #     or(
+  #       eq(variables['build.sourceBranch'], 'refs/heads/master'),
+  #       startsWith(variables['build.sourceBranch'], 'refs/heads/cli')
+  #     )
+  #   strategy:
+  #     maxParallel: 2
+  #     matrix:
+  #       mac:
+  #         vm: xcode9-macos10.13
+  #         target: darwin-x64
+  #       linux:
+  #         vm: ubuntu-16.04
+  #         target: linux-x64
+  #   pool:
+  #     vmImage: $(vm)
+  #   steps:
+  #     - task: NodeTool@0
+  #       inputs:
+  #         versionSpec: $(node_version)
+  #     - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
+  #       inputs:
+  #         versionSpec: $(yarn_version)
+  #     - bash: yarn install --no-progress && yarn bootstrap
+  #       displayName: Setup Dependencies
+  #     - bash: yarn build && yarn bundle
+  #       displayName: Build
+  #     - bash: ./scripts/release/pack $(target)
+  #       displayName: Pack CLI Bundle
+  #     - task: PublishPipelineArtifact@0
+  #       inputs:
+  #         artifactName: cli-$(target)
+  #         targetPath: $(Build.SourcesDirectory)/packages/cli/dist
